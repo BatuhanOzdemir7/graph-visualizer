@@ -8,16 +8,18 @@ Originally built as a developer tool for a personal game project to simulate map
 
 ## 🌟 Key Features
 
-*   **Completely Interactive Sandbox:** Drag, drop, and rearrange nodes freely with an active physics-based layout (using `vis-network`).
-*   **Coordinate-Based Persistence (NEW):** DND (Drag and Drop) positions are tracked. When you move a node, its exact `(x, y)` coordinate is saved. Refreshing the browser (`F5`) keeps everything exactly where you left them!
+*   **Completely Interactive Sandbox:** Drag, drop, and rearrange nodes freely with an active physics-based layout.
+*   **Coordinate-Based Persistence:** Node positions are auto-saved. Refreshing the browser (`F5`) keeps everything exactly where you left them.
+*   **Faction Management:** Create custom factions with specific colors. Assign nodes to factions to visually organize your graph.
+*   **Capital System:** Mark any node as a 'Capital' to highlight it with a star shape and increased scale.
 *   **Dynamic Graph Management:**
-    *   Create nodes with custom string-based IDs.
-    *   Establish weighted edges with custom names/labels (defaults to `weight = 1` if left blank).
-*   **Double-Click to Edit:** Simply double-click any node to rename its display label, or double-click an edge to update its weight and label instantly.
-*   **Robust State Management:**
-    *   **Auto-Save:** Saves your progress locally in your browser's Local Storage after every node creation, connection, or repositioning.
-    *   **JSON Export/Import:** Download your entire graph layout as a `.json` backup file and upload it later (or on another computer) to resume your work.
-*   **Pathfinding Visualizer:** Enter start and end nodes to calculate the shortest path. The visualizer highlights the optimal route in green (nodes) and red (edges) with high contrast.
+    *   Create nodes and establish weighted edges with custom labels.
+    *   **Delete Support:** Easily remove nodes or edges via the editing menu.
+*   **Double-Click to Edit:** Manage properties (label, faction, capital status, weight) with a modern modal interface.
+*   **Robust State Management:** 
+    *   **Auto-Save:** Saves everything locally after every change.
+    *   **JSON Export/Import:** Seamlessly backup or share your graph designs.
+*   **Pathfinding Visualizer:** Dijkstra-based shortest path calculation with high-contrast visual feedback.
 
 ---
 

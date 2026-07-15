@@ -33,7 +33,7 @@
             width: 100%;
             max-width: 1400px;
             gap: 25px;
-            height: 80vh;
+            height: 85vh;
         }
 
         .controls {
@@ -53,7 +53,7 @@
 
         .control-group h3 { margin-top: 0; font-size: 16px; color: #374151; }
 
-        input {
+        input, select {
             width: 100%;
             padding: 10px;
             margin-bottom: 12px;
@@ -63,7 +63,7 @@
             font-size: 14px;
         }
 
-        input:focus {
+        input:focus, select:focus {
             outline: none; border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
@@ -115,7 +115,7 @@
             background: white; padding: 30px; border-radius: 12px;
             width: 350px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         }
-        .modal-content h3 { margin-top: 0; }
+        .modal-content h3 { margin-top: 0; margin-bottom: 15px; }
         .modal-actions { display: flex; gap: 10px; margin-top: 15px; }
         .btn-cancel { background-color: #6B7280; }
         .btn-cancel:hover { background-color: #4B5563; }
@@ -130,22 +130,37 @@
         <div class="controls">
             
             <div class="control-group">
-                <h3>1. Graph Management (Save/Upload)</h3>
+                <h3>1. Graph Management</h3>
                 <button class="btn-blue" onclick="downloadJSON()">💾 Download as JSON</button>
                 <input type="file" id="uploadJSON" accept=".json" style="display: none;" onchange="handleFileUpload(event)">
                 <button class="btn-purple" onclick="document.getElementById('uploadJSON').click()">📂 Upload JSON</button>
                 <button class="btn-red" onclick="resetGraph()">🗑️ Reset Graph</button>
-                <p style="font-size: 11px; color: #6B7280; margin: 5px 0 0 0;">* Positions and changes are auto-saved.</p>
             </div>
 
             <div class="control-group">
-                <h3>2. Add Node</h3>
+                <h3>2. Faction Management</h3>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="text" id="factionName" placeholder="Faction Name (e.g., Elves)" style="margin-bottom: 0;">
+                    <input type="color" id="factionColor" value="#10B981" style="padding: 0; width: 50px; height: 38px; border-radius: 6px; cursor: pointer;">
+                </div>
+                <button onclick="addFaction()">Add Faction</button>
+                <div id="factionList" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;"></div>
+            </div>
+
+            <div class="control-group">
+                <h3>3. Add Node</h3>
                 <input type="text" id="nodeName" placeholder="Node ID (e.g., A, B, C)">
+                <select id="nodeFaction">
+                    <option value="">-- Select Faction (Default) --</option>
+                </select>
+                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; cursor: pointer;">
+                    <input type="checkbox" id="nodeCapital" style="width: auto; margin: 0;"> Capital (Star)
+                </label>
                 <button onclick="addNode()">Add Node</button>
             </div>
 
             <div class="control-group">
-                <h3>3. Add Edge</h3>
+                <h3>4. Add Edge</h3>
                 <input type="text" id="edgeFrom" placeholder="Source Node (e.g., A)">
                 <input type="text" id="edgeTo" placeholder="Target Node (e.g., B)">
                 <input type="number" id="edgeWeight" placeholder="Weight (Default: 1)">
@@ -154,16 +169,12 @@
             </div>
 
             <div class="control-group">
-                <h3>4. Calculate Shortest Path</h3>
+                <h3>5. Calculate Shortest Path</h3>
                 <input type="text" id="pathStart" placeholder="Start Node">
                 <input type="text" id="pathEnd" placeholder="End Node">
                 <button class="btn-green" onclick="calculateShortestPath()">Find Path</button>
                 <div id="resultText"></div>
             </div>
-            
-            <p style="font-size: 12px; color: #6B7280; text-align: center;">
-                * Double-click on a node or edge to edit its properties. You can change node labels and edge weights/labels.
-            </p>
         </div>
 
         <!-- Graph Visualization Area -->
@@ -178,6 +189,13 @@
             <div id="nodeEditFields" style="display: none;">
                 <label>Node Name (Display):</label>
                 <input type="text" id="editNodeLabel">
+                <label>Faction:</label>
+                <select id="editNodeFaction">
+                    <option value="">-- Select Faction (Default) --</option>
+                </select>
+                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; margin-top: 10px; cursor: pointer;">
+                    <input type="checkbox" id="editNodeCapital" style="width: auto; margin: 0;"> Capital (Star)
+                </label>
             </div>
 
             <div id="edgeEditFields" style="display: none;">
@@ -188,8 +206,9 @@
             </div>
 
             <div class="modal-actions">
-                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-                <button onclick="saveEdit()">Save</button>
+                <button class="btn-red" onclick="deleteSelected()" style="flex: 1;">Delete</button>
+                <button class="btn-cancel" onclick="closeModal()" style="flex: 1;">Cancel</button>
+                <button class="btn-green" onclick="saveEdit()" style="flex: 1;">Save</button>
             </div>
         </div>
     </div>
@@ -198,6 +217,7 @@
         const nodes = new vis.DataSet([]);
         const edges = new vis.DataSet([]);
         let edgeCounter = 1;
+        let factions = {}; // Format: { "factionName": "#colorHex" }
         
         let editingType = null; 
         let editingId = null;
@@ -208,7 +228,7 @@
         const options = {
             nodes: {
                 shape: 'dot', size: 20,
-                font: { size: 16, color: '#1F2937', face: 'Segoe UI', bold: true },
+                font: { size: 16, color: '#1F2937', face: 'Segoe UI', bold: true, align: 'center' },
                 color: { background: '#60A5FA', border: '#2563EB', highlight: { background: '#FBBF24', border: '#D97706' } },
                 borderWidth: 2, shadow: true
             },
@@ -229,22 +249,67 @@
         const defaultEdgeColor = { color: '#9CA3AF' };
         const highlightEdgeColor = { color: '#EF4444' };
 
-        // --- NEW: FETCH POSITIONS & CLEAN COLORS FOR SAVING ---
-        function getCleanState() {
-            const positions = network.getPositions(); // Ekrandaki güncel x ve y konumlarını alır
+        // --- FACTION MANAGEMENT ---
+        function renderFactionsList() {
+            const listDiv = document.getElementById('factionList');
+            const nodeSelect = document.getElementById('nodeFaction');
+            const editSelect = document.getElementById('editNodeFaction');
             
-            // Düğümleri x, y koordinatlarıyla ve varsayılan renkle kaydet
+            listDiv.innerHTML = '';
+            let optionsHtml = '<option value="">-- Select Faction (Default) --</option>';
+            
+            for (let name in factions) {
+                let color = factions[name];
+                
+                let badge = document.createElement('span');
+                badge.style.backgroundColor = color;
+                badge.style.color = '#fff';
+                badge.style.padding = '4px 8px';
+                badge.style.borderRadius = '12px';
+                badge.style.fontSize = '12px';
+                badge.style.fontWeight = 'bold';
+                badge.style.textShadow = '0px 1px 2px rgba(0,0,0,0.5)';
+                badge.innerText = name;
+                listDiv.appendChild(badge);
+                
+                optionsHtml += `<option value="${name}">${name}</option>`;
+            }
+            
+            nodeSelect.innerHTML = optionsHtml;
+            editSelect.innerHTML = optionsHtml;
+        }
+
+        function addFaction() {
+            const name = document.getElementById('factionName').value.trim();
+            const color = document.getElementById('factionColor').value;
+            if (!name) return alert("Please enter a faction name.");
+            
+            factions[name] = color;
+            document.getElementById('factionName').value = '';
+            renderFactionsList();
+            saveStateToLocal();
+        }
+
+        function getNodeColor(factionName) {
+            if (factionName && factions[factionName]) {
+                return { background: factions[factionName], border: '#1F2937' };
+            }
+            return defaultNodeColor;
+        }
+
+        // --- STATE MANAGEMENT ---
+        function getCleanState() {
+            const positions = network.getPositions(); 
             const cleanNodes = nodes.get().map(node => {
                 let n = { ...node };
                 if (positions[n.id]) {
                     n.x = positions[n.id].x;
                     n.y = positions[n.id].y;
                 }
-                n.color = defaultNodeColor; 
+                n.color = getNodeColor(n.faction); 
                 return n;
             });
 
-            // Kenarları varsayılan renk ve kalınlıkla kaydet
             const cleanEdges = edges.get().map(edge => {
                 let e = { ...edge };
                 e.color = defaultEdgeColor;
@@ -255,11 +320,11 @@
             return {
                 nodes: cleanNodes,
                 edges: cleanEdges,
-                edgeCounter: edgeCounter
+                edgeCounter: edgeCounter,
+                factions: factions
             };
         }
 
-        // --- AUTOMATIC SAVE (LOCAL STORAGE) ---
         function saveStateToLocal() {
             const state = getCleanState();
             localStorage.setItem('graphVisualizerState', JSON.stringify(state));
@@ -270,6 +335,10 @@
             if (savedState) {
                 try {
                     const state = JSON.parse(savedState);
+                    if (state.factions) {
+                        factions = state.factions;
+                        renderFactionsList();
+                    }
                     nodes.add(state.nodes);
                     edges.add(state.edges);
                     edgeCounter = state.edgeCounter || 1;
@@ -281,14 +350,10 @@
 
         window.onload = loadStateFromLocal;
 
-        // --- NEW: AUTO-SAVE ON DRAG END ---
         network.on("dragEnd", function (params) {
-            if (params.nodes.length > 0) {
-                saveStateToLocal();
-            }
+            if (params.nodes.length > 0) saveStateToLocal();
         });
 
-        // --- DOWNLOAD JSON FILE ---
         function downloadJSON() {
             const state = getCleanState();
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
@@ -300,7 +365,6 @@
             downloadAnchorNode.remove();
         }
 
-        // --- UPLOAD JSON FILE ---
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -308,8 +372,11 @@
             reader.onload = function(e) {
                 try {
                     const state = JSON.parse(e.target.result);
-                    nodes.clear();
-                    edges.clear();
+                    nodes.clear(); edges.clear();
+                    if (state.factions) {
+                        factions = state.factions;
+                        renderFactionsList();
+                    }
                     nodes.add(state.nodes);
                     edges.add(state.edges);
                     edgeCounter = state.edgeCounter || 1;
@@ -323,18 +390,19 @@
             reader.readAsText(file);
         }
 
-        // --- GRAPH RESET ---
         function resetGraph() {
-            if (confirm("Are you sure you want to delete all graph data and saved information? (This action cannot be undone)")) {
+            if (confirm("Are you sure you want to delete all graph data and saved information?")) {
                 nodes.clear();
                 edges.clear();
                 edgeCounter = 1;
+                factions = {};
+                renderFactionsList();
                 localStorage.removeItem('graphVisualizerState');
                 document.getElementById('resultText').style.display = 'none';
             }
         }
 
-        // --- Double Click Event (For Editing) ---
+        // --- GRAPH INTERACTION ---
         network.on("doubleClick", function (params) {
             if (params.nodes.length > 0) openEditModal('node', params.nodes[0]);
             else if (params.edges.length > 0) openEditModal('edge', params.edges[0]);
@@ -342,10 +410,26 @@
 
         function addNode() {
             const nodeId = document.getElementById('nodeName').value.trim();
+            const faction = document.getElementById('nodeFaction').value;
+            const isCapital = document.getElementById('nodeCapital').checked;
+            
             if (!nodeId) return alert("Please enter a node ID.");
             if (nodes.get(nodeId)) return alert("This node already exists.");
-            nodes.add({ id: nodeId, label: nodeId, color: defaultNodeColor });
+            
+            nodes.add({ 
+                id: nodeId, 
+                label: isCapital ? nodeId + '\n⭐' : nodeId,
+                originalLabel: nodeId,
+                faction: faction,
+                isCapital: isCapital,
+                color: getNodeColor(faction),
+                shape: isCapital ? 'star' : 'dot',
+                size: isCapital ? 30 : 20
+            });
+            
             document.getElementById('nodeName').value = '';
+            document.getElementById('nodeFaction').value = '';
+            document.getElementById('nodeCapital').checked = false;
             saveStateToLocal();
         }
 
@@ -362,13 +446,11 @@
 
             if (!fromNode || !toNode) return alert("Source and target nodes must be specified.");
             if (!nodes.get(fromNode) || !nodes.get(toNode)) return alert("One or both of the specified nodes could not be found.");
-
             if (isNaN(weight)) weight = 1;
 
             edges.add({
                 id: edgeCounter++,
-                from: fromNode,
-                to: toNode,
+                from: fromNode, to: toNode,
                 label: formatEdgeDisplay(weight, edgeLabel),
                 weight: weight,
                 originalLabel: edgeLabel,
@@ -382,6 +464,7 @@
             saveStateToLocal();
         }
 
+        // --- MODAL AND EDITING ---
         function openEditModal(type, id) {
             editingType = type; editingId = id;
             document.getElementById('editModal').style.display = 'flex';
@@ -392,7 +475,9 @@
                 const nodeData = nodes.get(id);
                 document.getElementById('modalTitle').innerText = `Edit Node: ${id}`;
                 document.getElementById('nodeEditFields').style.display = 'block';
-                document.getElementById('editNodeLabel').value = nodeData.label;
+                document.getElementById('editNodeLabel').value = nodeData.originalLabel || nodeData.label.replace('\n⭐', '');
+                document.getElementById('editNodeFaction').value = nodeData.faction || "";
+                document.getElementById('editNodeCapital').checked = !!nodeData.isCapital;
             } else {
                 const edgeData = edges.get(id);
                 document.getElementById('modalTitle').innerText = `Edit Edge`;
@@ -407,9 +492,34 @@
             editingType = null; editingId = null;
         }
 
+        function deleteSelected() {
+            if (confirm("Are you sure you want to delete this element?")) {
+                if (editingType === 'node') {
+                    nodes.remove(editingId);
+                } else if (editingType === 'edge') {
+                    edges.remove(editingId);
+                }
+                closeModal();
+                saveStateToLocal();
+            }
+        }
+
         function saveEdit() {
             if (editingType === 'node') {
-                nodes.update({ id: editingId, label: document.getElementById('editNodeLabel').value.trim() });
+                const newLabel = document.getElementById('editNodeLabel').value.trim();
+                const newFaction = document.getElementById('editNodeFaction').value;
+                const newCapital = document.getElementById('editNodeCapital').checked;
+                
+                nodes.update({ 
+                    id: editingId, 
+                    label: newCapital ? newLabel + '\n⭐' : newLabel,
+                    originalLabel: newLabel,
+                    faction: newFaction,
+                    isCapital: newCapital,
+                    color: getNodeColor(newFaction),
+                    shape: newCapital ? 'star' : 'dot',
+                    size: newCapital ? 30 : 20
+                });
             } else if (editingType === 'edge') {
                 const newWeight = parseFloat(document.getElementById('editEdgeWeight').value);
                 const newLabel = document.getElementById('editEdgeLabel').value.trim();
@@ -423,8 +533,9 @@
             saveStateToLocal();
         }
 
+        // --- PATHFINDING ---
         function resetColors() {
-            nodes.forEach(node => nodes.update({ id: node.id, color: defaultNodeColor }));
+            nodes.forEach(node => nodes.update({ id: node.id, color: getNodeColor(node.faction) }));
             edges.forEach(edge => edges.update({ id: edge.id, color: defaultEdgeColor, width: 2 }));
         }
 
