@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph Visualizer & Shortest Path Finder</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg-color: #F3F4F6;
+            --panel-bg: #FFFFFF;
+            --text-main: #1F2937;
+            --border-color: #E5E7EB;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h2 { margin-top: 0; color: var(--text-main); }
+
+        .container {
+            display: flex;
+            width: 100%;
+            max-width: 1400px;
+            gap: 25px;
+            height: 80vh;
+        }
+
+        .controls {
+            flex: 1;
+            background: var(--panel-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .control-group h3 { margin-top: 0; font-size: 16px; color: #374151; }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 12px;
+            border: 1px solid #D1D5DB;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none; border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        button {
+            width: 100%; padding: 12px;
+            background-color: var(--primary);
+            color: white; border: none; border-radius: 6px;
+            cursor: pointer; font-weight: 600;
+            transition: background-color 0.2s;
+            margin-bottom: 8px;
+        }
+        button:hover { background-color: var(--primary-hover); }
+
+        .btn-green { background-color: #10B981; }
+        .btn-green:hover { background-color: #059669; }
+        
+        .btn-blue { background-color: #3B82F6; }
+        .btn-blue:hover { background-color: #2563EB; }
+        
+        .btn-purple { background-color: #8B5CF6; }
+        .btn-purple:hover { background-color: #7C3AED; }
+        
+        .btn-red { background-color: #EF4444; }
+        .btn-red:hover { background-color: #DC2626; }
+
+        #mynetwork {
+            flex: 3;
+            background-color: var(--panel-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+        }
+
+        #resultText {
+            margin-top: 15px; padding: 15px;
+            border-radius: 6px; font-weight: bold;
+            display: none;
+        }
+
+        .modal-overlay {
+            display: none; position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5); z-index: 1000;
+            justify-content: center; align-items: center;
+        }
+
+        .modal-content {
+            background: white; padding: 30px; border-radius: 12px;
+            width: 350px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .modal-content h3 { margin-top: 0; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-cancel { background-color: #6B7280; }
+        .btn-cancel:hover { background-color: #4B5563; }
+    </style>
+</head>
+<body>
+
+    <h2>Interactive Graph Analysis and Optimization Tool</h2>
+    
+    <div class="container">
+        <!-- Controls -->
+        <div class="controls">
+            
+            <div class="control-group">
+                <h3>1. Graph Management (Save/Upload)</h3>
+                <button class="btn-blue" onclick="downloadJSON()">💾 Download as JSON</button>
+                <input type="file" id="uploadJSON" accept=".json" style="display: none;" onchange="handleFileUpload(event)">
+                <button class="btn-purple" onclick="document.getElementById('uploadJSON').click()">📂 Upload JSON</button>
+                <button class="btn-red" onclick="resetGraph()">🗑️ Reset Graph</button>
+                <p style="font-size: 11px; color: #6B7280; margin: 5px 0 0 0;">* Positions and changes are auto-saved.</p>
+            </div>
+
+            <div class="control-group">
+                <h3>2. Add Node</h3>
+                <input type="text" id="nodeName" placeholder="Node ID (e.g., A, B, C)">
+                <button onclick="addNode()">Add Node</button>
+            </div>
+
+            <div class="control-group">
+                <h3>3. Add Edge</h3>
+                <input type="text" id="edgeFrom" placeholder="Source Node (e.g., A)">
+                <input type="text" id="edgeTo" placeholder="Target Node (e.g., B)">
+                <input type="number" id="edgeWeight" placeholder="Weight (Default: 1)">
+                <input type="text" id="edgeLabel" placeholder="Edge Label (Optional)">
+                <button onclick="addEdge()">Add Edge</button>
+            </div>
+
+            <div class="control-group">
+                <h3>4. Calculate Shortest Path</h3>
+                <input type="text" id="pathStart" placeholder="Start Node">
+                <input type="text" id="pathEnd" placeholder="End Node">
+                <button class="btn-green" onclick="calculateShortestPath()">Find Path</button>
+                <div id="resultText"></div>
+            </div>
+            
+            <p style="font-size: 12px; color: #6B7280; text-align: center;">
+                * Double-click on a node or edge to edit its properties. You can change node labels and edge weights/labels.
+            </p>
+        </div>
+
+        <!-- Graph Visualization Area -->
+        <div id="mynetwork"></div>
+    </div>
+
+    <!-- Edit Modal (Pop-up) -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Edit</h3>
+            
+            <div id="nodeEditFields" style="display: none;">
+                <label>Node Name (Display):</label>
+                <input type="text" id="editNodeLabel">
+            </div>
+
+            <div id="edgeEditFields" style="display: none;">
+                <label>Weight:</label>
+                <input type="number" id="editEdgeWeight">
+                <label>Edge Label:</label>
+                <input type="text" id="editEdgeLabel">
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button onclick="saveEdit()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const nodes = new vis.DataSet([]);
+        const edges = new vis.DataSet([]);
+        let edgeCounter = 1;
+        
+        let editingType = null; 
+        let editingId = null;
+
+        const container = document.getElementById('mynetwork');
+        const data = { nodes: nodes, edges: edges };
+        
+        const options = {
+            nodes: {
+                shape: 'dot', size: 20,
+                font: { size: 16, color: '#1F2937', face: 'Segoe UI', bold: true },
+                color: { background: '#60A5FA', border: '#2563EB', highlight: { background: '#FBBF24', border: '#D97706' } },
+                borderWidth: 2, shadow: true
+            },
+            edges: {
+                width: 2,
+                font: { size: 14, align: 'top', color: '#4B5563', face: 'Segoe UI' },
+                color: { color: '#9CA3AF', highlight: '#374151' },
+                smooth: { type: 'continuous' }, shadow: true
+            },
+            interaction: { hover: true, tooltipDelay: 200 },
+            physics: { enabled: true, barnesHut: { gravitationalConstant: -2500, centralGravity: 0.2, springLength: 150 } }
+        };
+
+        const network = new vis.Network(container, data, options);
+
+        const defaultNodeColor = { background: '#60A5FA', border: '#2563EB' };
+        const highlightNodeColor = { background: '#10B981', border: '#047857' };
+        const defaultEdgeColor = { color: '#9CA3AF' };
+        const highlightEdgeColor = { color: '#EF4444' };
+
+        // --- NEW: FETCH POSITIONS & CLEAN COLORS FOR SAVING ---
+        function getCleanState() {
+            const positions = network.getPositions(); // Ekrandaki güncel x ve y konumlarını alır
+            
+            // Düğümleri x, y koordinatlarıyla ve varsayılan renkle kaydet
+            const cleanNodes = nodes.get().map(node => {
+                let n = { ...node };
+                if (positions[n.id]) {
+                    n.x = positions[n.id].x;
+                    n.y = positions[n.id].y;
+                }
+                n.color = defaultNodeColor; 
+                return n;
+            });
+
+            // Kenarları varsayılan renk ve kalınlıkla kaydet
+            const cleanEdges = edges.get().map(edge => {
+                let e = { ...edge };
+                e.color = defaultEdgeColor;
+                e.width = 2;
+                return e;
+            });
+
+            return {
+                nodes: cleanNodes,
+                edges: cleanEdges,
+                edgeCounter: edgeCounter
+            };
+        }
+
+        // --- AUTOMATIC SAVE (LOCAL STORAGE) ---
+        function saveStateToLocal() {
+            const state = getCleanState();
+            localStorage.setItem('graphVisualizerState', JSON.stringify(state));
+        }
+
+        function loadStateFromLocal() {
+            const savedState = localStorage.getItem('graphVisualizerState');
+            if (savedState) {
+                try {
+                    const state = JSON.parse(savedState);
+                    nodes.add(state.nodes);
+                    edges.add(state.edges);
+                    edgeCounter = state.edgeCounter || 1;
+                } catch (e) {
+                    console.error("Error loading saved state:", e);
+                }
+            }
+        }
+
+        window.onload = loadStateFromLocal;
+
+        // --- NEW: AUTO-SAVE ON DRAG END ---
+        network.on("dragEnd", function (params) {
+            if (params.nodes.length > 0) {
+                saveStateToLocal();
+            }
+        });
+
+        // --- DOWNLOAD JSON FILE ---
+        function downloadJSON() {
+            const state = getCleanState();
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "graph_backup.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        // --- UPLOAD JSON FILE ---
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const state = JSON.parse(e.target.result);
+                    nodes.clear();
+                    edges.clear();
+                    nodes.add(state.nodes);
+                    edges.add(state.edges);
+                    edgeCounter = state.edgeCounter || 1;
+                    saveStateToLocal();
+                    document.getElementById('resultText').style.display = 'none';
+                } catch (err) {
+                    alert("JSON file could not be loaded. Please ensure it is in the correct format.");
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // --- GRAPH RESET ---
+        function resetGraph() {
+            if (confirm("Are you sure you want to delete all graph data and saved information? (This action cannot be undone)")) {
+                nodes.clear();
+                edges.clear();
+                edgeCounter = 1;
+                localStorage.removeItem('graphVisualizerState');
+                document.getElementById('resultText').style.display = 'none';
+            }
+        }
+
+        // --- Double Click Event (For Editing) ---
+        network.on("doubleClick", function (params) {
+            if (params.nodes.length > 0) openEditModal('node', params.nodes[0]);
+            else if (params.edges.length > 0) openEditModal('edge', params.edges[0]);
+        });
+
+        function addNode() {
+            const nodeId = document.getElementById('nodeName').value.trim();
+            if (!nodeId) return alert("Please enter a node ID.");
+            if (nodes.get(nodeId)) return alert("This node already exists.");
+            nodes.add({ id: nodeId, label: nodeId, color: defaultNodeColor });
+            document.getElementById('nodeName').value = '';
+            saveStateToLocal();
+        }
+
+        function formatEdgeDisplay(weight, label) {
+            if (label && label.trim() !== "") return `${label} (w=${weight})`;
+            return `w=${weight}`;
+        }
+
+        function addEdge() {
+            const fromNode = document.getElementById('edgeFrom').value.trim();
+            const toNode = document.getElementById('edgeTo').value.trim();
+            let weight = parseFloat(document.getElementById('edgeWeight').value);
+            const edgeLabel = document.getElementById('edgeLabel').value.trim();
+
+            if (!fromNode || !toNode) return alert("Source and target nodes must be specified.");
+            if (!nodes.get(fromNode) || !nodes.get(toNode)) return alert("One or both of the specified nodes could not be found.");
+
+            if (isNaN(weight)) weight = 1;
+
+            edges.add({
+                id: edgeCounter++,
+                from: fromNode,
+                to: toNode,
+                label: formatEdgeDisplay(weight, edgeLabel),
+                weight: weight,
+                originalLabel: edgeLabel,
+                color: defaultEdgeColor
+            });
+
+            document.getElementById('edgeFrom').value = '';
+            document.getElementById('edgeTo').value = '';
+            document.getElementById('edgeWeight').value = '';
+            document.getElementById('edgeLabel').value = '';
+            saveStateToLocal();
+        }
+
+        function openEditModal(type, id) {
+            editingType = type; editingId = id;
+            document.getElementById('editModal').style.display = 'flex';
+            document.getElementById('nodeEditFields').style.display = 'none';
+            document.getElementById('edgeEditFields').style.display = 'none';
+
+            if (type === 'node') {
+                const nodeData = nodes.get(id);
+                document.getElementById('modalTitle').innerText = `Edit Node: ${id}`;
+                document.getElementById('nodeEditFields').style.display = 'block';
+                document.getElementById('editNodeLabel').value = nodeData.label;
+            } else {
+                const edgeData = edges.get(id);
+                document.getElementById('modalTitle').innerText = `Edit Edge`;
+                document.getElementById('edgeEditFields').style.display = 'block';
+                document.getElementById('editEdgeWeight').value = edgeData.weight;
+                document.getElementById('editEdgeLabel').value = edgeData.originalLabel || '';
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+            editingType = null; editingId = null;
+        }
+
+        function saveEdit() {
+            if (editingType === 'node') {
+                nodes.update({ id: editingId, label: document.getElementById('editNodeLabel').value.trim() });
+            } else if (editingType === 'edge') {
+                const newWeight = parseFloat(document.getElementById('editEdgeWeight').value);
+                const newLabel = document.getElementById('editEdgeLabel').value.trim();
+                if (isNaN(newWeight)) return alert("Please enter a valid weight.");
+                edges.update({ 
+                    id: editingId, weight: newWeight, originalLabel: newLabel,
+                    label: formatEdgeDisplay(newWeight, newLabel)
+                });
+            }
+            closeModal();
+            saveStateToLocal();
+        }
+
+        function resetColors() {
+            nodes.forEach(node => nodes.update({ id: node.id, color: defaultNodeColor }));
+            edges.forEach(edge => edges.update({ id: edge.id, color: defaultEdgeColor, width: 2 }));
+        }
+
+        function calculateShortestPath() {
+            resetColors();
+            const startNode = document.getElementById('pathStart').value.trim();
+            const endNode = document.getElementById('pathEnd').value.trim();
+            const resultDiv = document.getElementById('resultText');
+            
+            resultDiv.style.display = 'block';
+
+            if (!nodes.get(startNode) || !nodes.get(endNode)) {
+                resultDiv.innerText = "Error: Start or end node not found.";
+                resultDiv.style.backgroundColor = "#FEF2F2"; resultDiv.style.color = "#991B1B";
+                return;
+            }
+
+            const graph = {};
+            nodes.getIds().forEach(id => { graph[id] = []; });
+            
+            edges.get().forEach(edge => {
+                graph[edge.from].push({ node: edge.to, weight: edge.weight, edgeId: edge.id });
+                graph[edge.to].push({ node: edge.from, weight: edge.weight, edgeId: edge.id });
+            });
+
+            const distances = {};
+            const previous = {};
+            const unvisited = new Set(nodes.getIds());
+
+            nodes.getIds().forEach(id => { distances[id] = Infinity; });
+            distances[startNode] = 0;
+
+            while (unvisited.size > 0) {
+                let current = null;
+                let minDistance = Infinity;
+
+                unvisited.forEach(node => {
+                    if (distances[node] < minDistance) {
+                        minDistance = distances[node];
+                        current = node;
+                    }
+                });
+
+                if (current === null || current === endNode) break;
+
+                unvisited.delete(current);
+
+                graph[current].forEach(neighbor => {
+                    if (unvisited.has(neighbor.node)) {
+                        const newDist = distances[current] + neighbor.weight;
+                        if (newDist < distances[neighbor.node]) {
+                            distances[neighbor.node] = newDist;
+                            previous[neighbor.node] = { node: current, edgeId: neighbor.edgeId };
+                        }
+                    }
+                });
+            }
+
+            if (distances[endNode] === Infinity) {
+                resultDiv.innerText = `No path found between ${startNode} and ${endNode}.`;
+                resultDiv.style.backgroundColor = "#FEF2F2"; resultDiv.style.color = "#991B1B";
+                return;
+            }
+
+            let path = [];
+            let currentPathNode = endNode;
+            let edgesToHighlight = [];
+
+            while (currentPathNode !== startNode) {
+                path.unshift(currentPathNode);
+                edgesToHighlight.push(previous[currentPathNode].edgeId);
+                currentPathNode = previous[currentPathNode].node;
+            }
+            path.unshift(startNode);
+
+            path.forEach(nodeId => nodes.update({ id: nodeId, color: highlightNodeColor }));
+            edgesToHighlight.forEach(edgeId => edges.update({ id: edgeId, color: highlightEdgeColor, width: 4 }));
+
+            resultDiv.innerText = `Shortest Path: ${path.join(" -> ")} \nTotal Cost: ${distances[endNode]}`;
+            resultDiv.style.backgroundColor = "#ECFDF5"; resultDiv.style.color = "#065F46";
+        }
+    </script>
+</body>
+</html>
