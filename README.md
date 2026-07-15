@@ -55,7 +55,8 @@ This visualizer serves as an essential debugging and design tool in game develop
 
 ## 📸 Preview
 
-<img width="1468" height="761" alt="image" src="https://github.com/user-attachments/assets/497d30fb-429f-47d7-b2c3-6400d65d9188" />
+<img width="1457" height="757" alt="image" src="https://github.com/user-attachments/assets/b8f36a9d-5e1d-4e42-8a58-7c3f137b2683" />
+
 <img width="1444" height="753" alt="image" src="https://github.com/user-attachments/assets/f30b9caa-7ceb-46d8-988b-4d9adf20d35d" />
 
 ---
